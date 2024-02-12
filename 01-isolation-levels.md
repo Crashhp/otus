@@ -19,23 +19,19 @@ Preemtible: true
 2. Сгенерировал новый ssh-ключ. Сделал это по привычке в Git Bash. Скопировал публичный и закинул в авторизацию на виртуальной машине в облаке.
 
 ```
-Mamaev Konstantin@DESKTOP-31PAPS1 MINGW64 /
 $ cd ~/.ssh
-
-Mamaev Konstantin@DESKTOP-31PAPS1 MINGW64 /
 $ ssh-keygen -t rsa -b 2048
-
-Mamaev Konstantin@DESKTOP-31PAPS1 MINGW64 ~/.ssh
 $ cat kmamaev.pub
 ```
 
 3. Хотел прокинуть новый ключ в `ssh-agent`, чтобы не указывать его явно, но оказалось, что он у меня выключен. Включил через `powershell` по [инструкции](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement).
 
-```
+```powershell
 PS C:\> Get-Service ssh-agent | Set-Service -StartupType Automatic
 PS C:\> Start-Service ssh-agent
 PS C:\> Get-Service ssh-agent
-
+```
+```
 Status   Name               DisplayName
 ------   ----               -----------
 Running  ssh-agent          OpenSSH Authentication Agent
@@ -46,7 +42,6 @@ Running  ssh-agent          OpenSSH Authentication Agent
 ```
 PS C:\> ssh-add kmamaev
 PS C:\> ssh kmamaev@<IP>
-kmamaev@kmamaev:~$ 
 ```
 
 ### Настройка PosgtreSQL
@@ -55,9 +50,12 @@ kmamaev@kmamaev:~$
 
 ```
 kmamaev@kmamaev:~$ pg_lsclusters
+```
+```
 Ver Cluster Port Status Owner    Data directory              Log file
 16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
 ```
+
 
 2. Запустил `psql` под пользователем `postgres` и установил пароль, чтобы была возможность под этим пользователем по сети заходить.
 
@@ -106,7 +104,7 @@ postgres-# \! clear
 ```
 
 Интересно, что пока нет точки с запятой, то он не завершает транзакцию. Создаю `test` и вывожу все бд в кластере. 
-```
+```sql
 postgres=# create database test
 postgres=# ;
 postgres-# \list
@@ -118,13 +116,13 @@ postgres-# \list
 
 1. Выключаем `AUTOCOMMIT`.
 
-```
+```sql
 postgres1=# \set AUTOCOMMIT off
 postgres1-# \echo :AUTOCOMMIT
 off
 ```
 
-```
+```sql
 postgres2=# \set AUTOCOMMIT off
 postgres2-# \echo :AUTOCOMMIT
 off
@@ -132,7 +130,7 @@ off
 
 2. Создаем таблицу и заполняем данными в первой сессии.
 
-```
+```sql
 postgres1=# create table persons(id serial, first_name text, last_name text);
 CREATE TABLE
 
@@ -147,7 +145,7 @@ COMMIT
 
 3. Вставляем данные в первой сессии, но не коммитим и читаем из второй.
 
-```
+```sql
 postgres1=*# show transaction isolation level;
  transaction_isolation
 -----------------------
@@ -158,7 +156,7 @@ postgres1=# insert into persons(first_name, last_name) values ('sidr', 'sidorov'
 INSERT 0 1
 ```
 
-```
+```sql
 postgres2=# show transaction isolation level;
  transaction_isolation
 -----------------------
@@ -177,12 +175,12 @@ postgres2=*# select * from persons;
 
 4. Делаем коммит в первой сессии и снова запрашиваем данные во второй.
 
-```
+```sql
 postgres1=*# commit;
 COMMIT
 ```
 
-```
+```sql
 postgres2=*# select * from persons;
  id | first_name | last_name
 ----+------------+-----------
@@ -199,7 +197,7 @@ COMMIT
 
 5. Ставим уровень изоляции транзакции `repeatable read`. Вставляем данные в первой сессии, но не коммитим и читаем из второй.
 
-```
+```sql
 postgres1=# set transaction isolation level repeatable read;
 SET
 
@@ -207,7 +205,7 @@ postgres1=*# insert into persons(first_name, last_name) values ('bob', 'bobov');
 INSERT 0 1
 ```
 
-```
+```sql
 postgres2=# set transaction isolation level repeatable read;
 SET
 
@@ -224,12 +222,12 @@ postgres2=*# select * from persons;
 
 6. Делаем коммит в первой сессии и читаем данные во второй.
 
-```
+```sql
 postgres1=*# commit;
 COMMIT
 ```
 
-```
+```sql
 postgres2=*# select * from persons;
  id | first_name | last_name
 ----+------------+-----------
@@ -243,7 +241,7 @@ postgres2=*# select * from persons;
 
 7. Делаем коммит во второй сессии и снова читаем данные.
 
-```
+```sql
 postgres2=*# commit;
 COMMIT
 
